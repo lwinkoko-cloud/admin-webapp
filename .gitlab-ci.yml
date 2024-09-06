@@ -1,0 +1,42 @@
+image: node:21-alpine
+
+stages:
+  - deploy
+  - sonarqube-check
+
+cache:
+  paths:
+    - node_modules/
+
+deploy:
+  stage: deploy
+  environment:
+    name: dev
+  script:
+    - bash deploy.sh
+  only:
+    - sit-release
+  tags:
+  - mobile-admin
+  - dev
+
+sonarqube-check:
+  stage: sonarqube-check
+  image: 
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner -Dsonar.qualitygate.wait=false -Dsonar.sources=. -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN
+  allow_failure: true
+  # rules:
+  #   - if: $CI_COMMIT_REF_NAME == 'development' || $CI_PIPELINE_SOURCE == 'merge_request_event'
+  only:
+    - sit-release
+
